@@ -1,4 +1,3 @@
-
 export interface Post {
   id: string;
   title: string;
@@ -133,7 +132,7 @@ export const posts: Post[] = [
   },
   {
     id: 'p4',
-    title: 'What's your most unpopular technological opinion?',
+    title: "What's your most unpopular technological opinion?",
     content: "We all have some unpopular opinions about technology. Maybe you think a certain programming language is overrated, or a popular device is actually terrible. What's your most controversial tech take? (Keep it civil!)",
     author: users[3],
     subreddit: 'askreddit',
