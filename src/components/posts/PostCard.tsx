@@ -1,122 +1,166 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MessageSquare, Share2 } from 'lucide-react';
-import { VoteButtons } from '@/components/ui/VoteButtons';
-import { Button } from '@/components/ui/button';
-import { Post } from '@/lib/data';
+import { ArrowBigUp, ArrowBigDown, MessageSquare, Share } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { postsAPI } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface PostCardProps {
-  post: Post;
-  showFullContent?: boolean;
-  className?: string;
+export interface PostCardProps {
+  post: {
+    _id: string;
+    title: string;
+    content: string;
+    author: {
+      _id: string;
+      username: string;
+    };
+    subreddit: {
+      _id: string;
+      name: string;
+    };
+    votes: number;
+    commentCount: number;
+    createdAt: string;
+    image?: string;
+    userVote?: number;
+  };
 }
 
-export function PostCard({ post, showFullContent = false, className }: PostCardProps) {
-  const [isImageLoaded, setIsImageLoaded] = useState(false);
+export const PostCard = ({ post }: PostCardProps) => {
+  const { isAuthenticated, openAuthModal } = useAuth();
+  const [voteCount, setVoteCount] = useState(post.votes);
+  const [userVote, setUserVote] = useState<number | undefined>(post.userVote);
   
-  const formattedDate = new Date(post.createdAt).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  const handleVote = async (vote: 1 | -1) => {
+    if (!isAuthenticated) {
+      openAuthModal();
+      return;
+    }
+    
+    try {
+      // If user is clicking the same vote button again, remove their vote
+      const newVote = userVote === vote ? 0 : vote;
+      
+      // Calculate the vote difference
+      let diff = 0;
+      if (userVote === undefined && newVote !== 0) {
+        diff = newVote;
+      } else if (userVote !== undefined && newVote === 0) {
+        diff = -userVote;
+      } else if (userVote !== undefined && newVote !== 0 && userVote !== newVote) {
+        diff = newVote * 2; // Switching from upvote to downvote or vice versa
+      }
+      
+      // Optimistically update UI
+      setVoteCount(prevCount => prevCount + diff);
+      setUserVote(newVote === 0 ? undefined : newVote);
+      
+      // Send API request
+      await postsAPI.votePost(post._id, vote);
+    } catch (error) {
+      console.error('Failed to vote:', error);
+      // Revert on error
+      setVoteCount(post.votes);
+      setUserVote(post.userVote);
+    }
+  };
   
-  const formattedComments = post.commentCount > 999 
-    ? `${(post.commentCount / 1000).toFixed(1)}k` 
-    : post.commentCount;
-
   return (
-    <div className={cn(
-      'bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden',
-      'transition-all duration-300 ease-out-expo hover-scale hover:shadow-md',
-      className
-    )}>
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 hover:border-gray-300">
       <div className="flex">
-        {/* Vote Buttons */}
-        <VoteButtons
-          initialVotes={post.votes}
-          orientation="vertical"
-          className="bg-gray-50"
-        />
+        {/* Vote buttons */}
+        <div className="w-10 bg-gray-50 rounded-l-lg flex flex-col items-center py-2">
+          <button 
+            onClick={() => handleVote(1)}
+            className={cn(
+              "p-1 rounded hover:bg-gray-200",
+              userVote === 1 && "text-orange-500"
+            )}
+            aria-label="Upvote"
+          >
+            <ArrowBigUp size={18} />
+          </button>
           
-        {/* Content */}
-        <div className="flex-1 p-3">
-          {/* Post Header */}
-          <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-            {/* Subreddit */}
-            <Link to={`/r/${post.subreddit}`} className="font-medium text-black hover:underline">
-              r/{post.subreddit}
+          <span className="text-xs font-medium my-1">{voteCount}</span>
+          
+          <button 
+            onClick={() => handleVote(-1)}
+            className={cn(
+              "p-1 rounded hover:bg-gray-200",
+              userVote === -1 && "text-blue-500"
+            )}
+            aria-label="Downvote"
+          >
+            <ArrowBigDown size={18} />
+          </button>
+        </div>
+        
+        {/* Post content */}
+        <div className="p-3 flex-1">
+          {/* Post metadata */}
+          <div className="flex items-center text-xs text-gray-500 mb-2">
+            <Link 
+              to={`/r/${post.subreddit.name}`} 
+              className="font-medium text-black hover:underline"
+            >
+              r/{post.subreddit.name}
             </Link>
-            
-            <span>•</span>
-            
-            {/* Author */}
-            <span>Posted by <Link to={`/user/${post.author.username}`} className="hover:underline">
+            <span className="mx-1">•</span>
+            <span>Posted by</span>
+            <Link 
+              to={`/user/${post.author.username}`} 
+              className="ml-1 hover:underline"
+            >
               u/{post.author.username}
-            </Link></span>
-            
-            <span>•</span>
-            
-            {/* Date */}
-            <span>{formattedDate}</span>
+            </Link>
+            <span className="mx-1">•</span>
+            <span>
+              {new Date(post.createdAt).toLocaleDateString()}
+            </span>
           </div>
           
-          {/* Title */}
-          <Link to={`/post/${post.id}`}>
-            <h2 className="text-lg font-medium text-gray-900 mb-2 hover:text-reddit-blue transition-colors">
+          {/* Post title */}
+          <Link to={`/post/${post._id}`}>
+            <h2 className="text-lg font-medium mb-2 hover:underline">
               {post.title}
             </h2>
           </Link>
           
-          {/* Content */}
+          {/* Post content */}
           <div className="mb-3">
-            {showFullContent ? (
-              <p className="text-gray-800">{post.content}</p>
-            ) : (
-              <p className="text-gray-800 line-clamp-3">{post.content}</p>
-            )}
+            <p className="text-gray-800 line-clamp-3">
+              {post.content}
+            </p>
           </div>
           
-          {/* Post Image */}
+          {/* Post image if exists */}
           {post.image && (
-            <Link to={`/post/${post.id}`} className="block mb-3">
-              <div className="relative rounded-md overflow-hidden bg-gray-100 aspect-video">
-                <img 
-                  src={post.image} 
-                  alt={post.title}
-                  className={cn(
-                    'w-full h-full object-cover transition-opacity duration-500',
-                    isImageLoaded ? 'opacity-100' : 'opacity-0'
-                  )}
-                  onLoad={() => setIsImageLoaded(true)}
-                />
-                {!isImageLoaded && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-10 h-10 border-4 border-gray-200 border-t-reddit-orange rounded-full animate-spin" />
-                  </div>
-                )}
-              </div>
-            </Link>
+            <div className="mb-3">
+              <img 
+                src={post.image} 
+                alt={post.title}
+                className="max-h-96 rounded object-contain"
+              />
+            </div>
           )}
           
-          {/* Actions */}
-          <div className="flex items-center gap-4 text-gray-500">
+          {/* Post actions */}
+          <div className="flex items-center text-gray-500 text-sm">
             <Link 
-              to={`/post/${post.id}`}
-              className="flex items-center gap-1 hover:bg-gray-100 rounded-full py-1 px-2 transition-colors"
+              to={`/post/${post._id}`}
+              className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1"
             >
-              <MessageSquare size={18} />
-              <span className="text-xs">{formattedComments} Comments</span>
+              <MessageSquare size={16} className="mr-1" />
+              <span>{post.commentCount} Comments</span>
             </Link>
             
-            <Button variant="ghost" size="sm" className="rounded-full h-8 gap-1 text-xs">
-              <Share2 size={16} />
+            <button className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1 ml-2">
+              <Share size={16} className="mr-1" />
               <span>Share</span>
-            </Button>
+            </button>
           </div>
         </div>
       </div>
     </div>
   );
-}
+};

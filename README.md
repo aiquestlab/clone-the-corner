@@ -59,6 +59,19 @@ This project is built with .
 - React
 - shadcn-ui
 - Tailwind CSS
+- Node.js
+- Express
+- MongoDB
+
+## Project Structure
+
+The project consists of a frontend and a backend. 
+
+### Frontend
+The frontend is built with React, TypeScript, and Tailwind CSS.
+
+### Backend
+The backend is built with Node.js, Express, and MongoDB. It includes features such as user authentication, post creation, and comment management.
 
 ## How can I deploy this project?
 
@@ -67,3 +80,7 @@ Simply open [Lovable](https://lovable.dev/projects/a36250cf-577c-4071-9e3c-3a4eb
 ## I want to use a custom domain - is that possible?
 
 We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+
+## Backend Information
+
+For more information about the backend, including API documentation and setup instructions, please see the [backend README](./backend/README.md).

@@ -1,33 +1,36 @@
-
 import { useState, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { PostCard } from '@/components/posts/PostCard';
-import { posts } from '@/lib/data';
+import { postsAPI } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { Post } from '@/lib/data';
 
 const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [sortBy, setSortBy] = useState<'hot' | 'new' | 'top'>('hot');
   
-  // Simulate loading state
+  // Fetch posts
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
+    const fetchPosts = async () => {
+      setIsLoading(true);
+      try {
+        const response = await postsAPI.getPosts({ sort: sortBy });
+        setPosts(response.posts);
+      } catch (error) {
+        console.error('Failed to fetch posts:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    return () => clearTimeout(timer);
-  }, []);
+    fetchPosts();
+  }, [sortBy]);
   
   // Handle sort change
   const handleSortChange = (sort: 'hot' | 'new' | 'top') => {
-    setIsLoading(true);
     setSortBy(sort);
-    
-    // Simulate loading when changing sort
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 500);
   };
   
   return (
